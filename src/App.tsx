@@ -37,7 +37,7 @@ export default function App() {
   const fetchDispatches = async () => {
     setIsRefreshing(true);
     try {
-      const res = await fetch('/api/dispatches?limit=100');
+      const res = await fetch('/api/dispatches?limit=500');
       if (res.ok) {
         const json = await res.json();
         if (Array.isArray(json.data) && json.data.length > 0) {
