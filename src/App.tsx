@@ -33,14 +33,51 @@ export default function App() {
   const [dbTotalRecords, setDbTotalRecords] = useState<number | undefined>(undefined);
   const [isLiveConnected, setIsLiveConnected] = useState<boolean>(true);
 
+  // Filters state
+  const [filters, setFilters] = useState<FilterState>({
+    search: '',
+    motorista: 'Todos os Motoristas',
+    placa: '',
+    periodo: 'tudo',
+  });
+
   // Fetch real dispatches from Supabase API
   const fetchDispatches = async () => {
     setIsRefreshing(true);
     try {
-      const res = await fetch('/api/dispatches?limit=500');
+      const params = new URLSearchParams();
+      params.set('limit', '500');
+      if (filters.motorista && filters.motorista !== 'Todos os Motoristas' && filters.motorista !== 'todos') {
+        params.set('motorista', filters.motorista);
+      }
+      if (filters.placa) {
+        params.set('placa', filters.placa);
+      }
+      if (filters.dataInicio) {
+        params.set('startDate', `${filters.dataInicio}T00:00:00.000Z`);
+      } else if (filters.periodo === 'hoje') {
+        const now = new Date();
+        const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+        params.set('startDate', `${todayStr}T00:00:00.000Z`);
+        params.set('endDate', `${todayStr}T23:59:59.999Z`);
+      } else if (filters.periodo === '7dias') {
+        const now = new Date();
+        const d7 = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        params.set('startDate', `${d7.getFullYear()}-${String(d7.getMonth() + 1).padStart(2, '0')}-${String(d7.getDate()).padStart(2, '0')}T00:00:00.000Z`);
+      } else if (filters.periodo === '30dias') {
+        const now = new Date();
+        const d30 = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+        params.set('startDate', `${d30.getFullYear()}-${String(d30.getMonth() + 1).padStart(2, '0')}-${String(d30.getDate()).padStart(2, '0')}T00:00:00.000Z`);
+      }
+
+      if (filters.dataFim) {
+        params.set('endDate', `${filters.dataFim}T23:59:59.999Z`);
+      }
+
+      const res = await fetch(`/api/dispatches?${params.toString()}`);
       if (res.ok) {
         const json = await res.json();
-        if (Array.isArray(json.data) && json.data.length > 0) {
+        if (Array.isArray(json.data)) {
           setDispatches(json.data);
           setDbTotalRecords(json.totalCount || json.data.length);
           setIsLiveConnected(true);
@@ -85,15 +122,9 @@ export default function App() {
       clearInterval(pollInterval);
       supabaseClient.removeChannel(channel);
     };
-  }, []);
+  }, [filters]);
 
-  // Filters state
-  const [filters, setFilters] = useState<FilterState>({
-    search: '',
-    motorista: 'Todos os Motoristas',
-    placa: '',
-    periodo: 'tudo',
-  });
+
 
   // Sorting state
   const [sortField, setSortField] = useState<SortField>('id');
